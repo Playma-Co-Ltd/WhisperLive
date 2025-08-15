@@ -247,8 +247,8 @@ class TranscriptionServer:
                 }))
 
         if self.backend.is_openai():
-            from whisper_live.backend.openai_backend import ServeClientOpenAI
             try:
+                from whisper_live.backend.openai_backend import ServeClientOpenAI
                 client = ServeClientOpenAI(
                     websocket,
                     client_uid=options["uid"],

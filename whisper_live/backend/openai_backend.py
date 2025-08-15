@@ -39,7 +39,7 @@ class ServeClientOpenAI(ServeClientBase):
         )
         self.client = OpenAI()
         self.model = "whisper-1"
-        self.language = "auto" # language
+        self.language = "auto"
         self.task = task
         self.initial_prompt = initial_prompt
 
