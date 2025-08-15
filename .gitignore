@@ -1,0 +1,55 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+
+# Environment variable files
+.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VS Code settings (如有使用)
+.vscode/
+
+# Mac 系統產生的隱藏檔案
+.DS_Store
+
+# Windows 系統產生的檔案
+Thumbs.db
+
+# Data folders (根據你的專案結構調整)
+data/audio/
+data/temp/
+data/transcription/
+data/example/*.xlsx
+
+# Optional: 忽略所有 mp3/srt/xlsx（更
+
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.mp3
+.mp4

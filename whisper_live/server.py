@@ -123,6 +123,7 @@ class BackendType(Enum):
     FASTER_WHISPER = "faster_whisper"
     TENSORRT = "tensorrt"
     OPENVINO = "openvino"
+    OPENAI = "openai" 
 
     @staticmethod
     def valid_types() -> List[str]:
@@ -140,6 +141,9 @@ class BackendType(Enum):
     
     def is_openvino(self) -> bool:
         return self == BackendType.OPENVINO
+
+    def is_openai(self) -> bool: # 新增這一行
+        return self == BackendType.OPENAI
 
 
 class TranscriptionServer:
@@ -242,6 +246,32 @@ class TranscriptionServer:
                                 "Reverting to available backend: 'faster_whisper'"
                 }))
 
+        if self.backend.is_openai():
+            from whisper_live.backend.openai_backend import ServeClientOpenAI
+            try:
+                client = ServeClientOpenAI(
+                    websocket,
+                    client_uid=options["uid"],
+                    model=options.get("model", "whisper-1"),
+                    language=options["language"],
+                    task=options["task"],
+                    send_last_n_segments=options.get("send_last_n_segments", 10),
+                    no_speech_thresh=options.get("no_speech_thresh", 0.45),
+                    clip_audio=options.get("clip_audio", False),
+                    same_output_threshold=options.get("same_output_threshold", 10),
+                    translation_queue=translation_queue
+                )
+                logging.info("Running OpenAI backend.")
+            except Exception as e:
+                logging.error(f"OpenAI backend not supported: {e}")
+                self.backend = BackendType.FASTER_WHISPER
+                self.client_uid = options["uid"]
+                websocket.send(json.dumps({
+                    "uid": self.client_uid,
+                    "status": "WARNING",
+                    "message": "OpenAI backend not supported on Server yet. "
+                                "Reverting to available backend: \'faster_whisper\'"
+                }))
         try:
             if self.backend.is_faster_whisper():
                 from whisper_live.backend.faster_whisper_backend import ServeClientFasterWhisper

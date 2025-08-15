@@ -74,6 +74,7 @@ class ServeClientFasterWhisper(ServeClientBase):
 
         self.model_size_or_path = model
         self.language = "en" if self.model_size_or_path.endswith("en") else language
+        self.language = language
         self.task = task
         self.initial_prompt = initial_prompt
         self.vad_parameters = vad_parameters or {"onset": 0.5}
@@ -207,7 +208,8 @@ class ServeClientFasterWhisper(ServeClientBase):
         result, info = self.transcriber.transcribe(
             input_sample,
             initial_prompt=self.initial_prompt,
-            language=self.language,
+            # language=self.language,
+            language=None, # 讓 set language 自動偵測語言
             task=self.task,
             vad_filter=self.use_vad,
             vad_parameters=self.vad_parameters if self.use_vad else None)
@@ -216,6 +218,8 @@ class ServeClientFasterWhisper(ServeClientBase):
 
         if self.language is None and info is not None:
             self.set_language(info)
+        print("這是呼叫完 self.transcriber.transcribe 得到的資料",result)
+        
         return result
 
     def handle_transcription_output(self, result, duration):
@@ -234,3 +238,22 @@ class ServeClientFasterWhisper(ServeClientBase):
 
         if len(segments):
             self.send_transcription_to_client(segments)
+
+    def send_transcription_to_client(self, segments):
+        """
+        改寫 base.py 的 method，將 whisper 辨識出的語言透過 language 送給 client
+        """
+        for s in segments:
+            s["source_language"] = self.language
+        
+        print("準備要送給 client 的資料",segments)
+
+        try:
+            self.websocket.send(
+                json.dumps({
+                    "uid": self.client_uid,
+                    "segments": segments
+                })
+            )
+        except Exception as e:
+            logging.error(f"[ERROR]: Sending data to client: {e}")
