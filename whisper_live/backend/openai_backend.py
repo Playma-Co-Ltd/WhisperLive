@@ -39,7 +39,7 @@ class ServeClientOpenAI(ServeClientBase):
         )
         self.client = OpenAI()
         self.model = "whisper-1"
-        self.language = "auto"
+        self.language = language
         self.task = task
         self.initial_prompt = initial_prompt
 
@@ -64,7 +64,7 @@ class ServeClientOpenAI(ServeClientBase):
     def transcribe_audio(self, audio_chunk: np.ndarray):
         # Process audio directly without buffering to match faster_whisper behavior
         # This ensures consistent timing and better quality
-        print("轉譯參數資料",self.no_speech_thresh,self.same_output_threshold)
+        print("轉譯參數資料",self.no_speech_thresh,self.same_output_threshold,self.initial_prompt,self.language)
         # ensure mono float32 in [-1, 1]
         x = np.asarray(audio_chunk, dtype=np.float32)
         x = np.clip(x, -1.0, 1.0)
@@ -98,17 +98,12 @@ class ServeClientOpenAI(ServeClientBase):
                 "model": self.model,
                 "file": buffer,
                 "temperature": 0,
-                "prompt": "",
+                "prompt": self.initial_prompt,
+                "language":self.language,
                 "response_format": "verbose_json", # Get timestamps
             }
             
-            # Add language if specified
-            if self.language and self.language != "auto":
-                api_params["language"] = self.language
-            
             response = self.client.audio.transcriptions.create(**api_params)
-            # print("單次轉譯資料",response)
-            print("轉譯完成")
             
             # Return response object for processing
             return response
@@ -137,17 +132,17 @@ class ServeClientOpenAI(ServeClientBase):
             segments = self.prepare_segments(last_segment)
 
         if len(segments):
-            self.send_transcription_to_client(segments,language)
+            self.send_transcription_to_client(segments, language)
 
 
-    def send_transcription_to_client(self, segments,language):
+    def send_transcription_to_client(self, segments, language):
         """
         改寫 base.py 的 method，將 whisper 辨識出的語言透過 language 送給 client
         """
         for s in segments:
             s["source_language"] = language
         
-        # print("準備要送給 client 的資料",segments)
+        logging.info(f"For client {segments}")
 
         try:
             self.websocket.send(

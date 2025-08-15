@@ -205,11 +205,14 @@ class ServeClientFasterWhisper(ServeClientBase):
         """
         if ServeClientFasterWhisper.SINGLE_MODEL:
             ServeClientFasterWhisper.SINGLE_MODEL_LOCK.acquire()
+
+        if self.language == "auto":
+            self.language = None
+        print("轉譯參數資料",self.no_speech_thresh,self.same_output_threshold,self.initial_prompt,self.language)
         result, info = self.transcriber.transcribe(
             input_sample,
             initial_prompt=self.initial_prompt,
-            # language=self.language,
-            language=None, # 讓 set language 自動偵測語言
+            language=self.language,
             task=self.task,
             vad_filter=self.use_vad,
             vad_parameters=self.vad_parameters if self.use_vad else None)
