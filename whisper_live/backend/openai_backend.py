@@ -122,7 +122,7 @@ class ServeClientOpenAI(ServeClientBase):
         """
         if result is None:
             return
-        language = result.language
+        self.dectected_language = result.language
         result = result.segments
         
         segments = []
@@ -132,15 +132,15 @@ class ServeClientOpenAI(ServeClientBase):
             segments = self.prepare_segments(last_segment)
 
         if len(segments):
-            self.send_transcription_to_client(segments, language)
+            self.send_transcription_to_client(segments)
 
 
-    def send_transcription_to_client(self, segments, language):
+    def send_transcription_to_client(self, segments):
         """
         改寫 base.py 的 method，將 whisper 辨識出的語言透過 language 送給 client
         """
         for s in segments:
-            s["source_language"] = language
+            s["source_language"] = self.dectected_language 
         
         logging.info(f"For client {segments}")
 
