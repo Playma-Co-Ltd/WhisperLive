@@ -109,8 +109,8 @@ class ServeClientOpenAI(ServeClientBase):
 
             # Update the dectected language code from whisper
             if result.language:
-                self.dectected_language = result.language
-            
+                self.detected_language = result.language
+
             return result
 
         except Exception as e:
@@ -147,7 +147,7 @@ class ServeClientOpenAI(ServeClientBase):
         Modify the method in base.py to send the language detected by Whisper to the client via the language field.
         """
         for s in segments:
-            s["source_language"] = self.dectected_language 
+            s["source_language"] = self.detected_language 
         
         logging.info(f"For client {segments}")
 
@@ -160,4 +160,3 @@ class ServeClientOpenAI(ServeClientBase):
             )
         except Exception as e:
             logging.error(f"[ERROR]: Sending data to client: {e}")
-            
