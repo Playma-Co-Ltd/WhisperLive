@@ -1,8 +1,6 @@
-# Build and coverage
 /build
 /coverage
 
-# Environment files
 .env
 .env.development.local
 .env.local
