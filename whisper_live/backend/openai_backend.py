@@ -160,3 +160,4 @@ class ServeClientOpenAI(ServeClientBase):
             )
         except Exception as e:
             logging.error(f"[ERROR]: Sending data to client: {e}")
+            
