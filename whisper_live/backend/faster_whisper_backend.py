@@ -205,23 +205,25 @@ class ServeClientFasterWhisper(ServeClientBase):
         if ServeClientFasterWhisper.SINGLE_MODEL:
             ServeClientFasterWhisper.SINGLE_MODEL_LOCK.acquire()
 
-        if self.language == "auto":
-            self.language = None
-        print("轉譯參數資料",self.no_speech_thresh,self.same_output_threshold,self.initial_prompt,self.language)
+        # Don’t pass language parameters when the client selects auto-detection.
+        # Before each transcription, lang_arg is set to None to enable auto-detection.
+        # If the user passes a language code, then all transcriptions will use that language code.
+        lang_arg = None if self.language == "auto" else self.language
+
         result, info = self.transcriber.transcribe(
             input_sample,
             initial_prompt=self.initial_prompt,
-            language=self.language,
+            language=lang_arg,
             task=self.task,
             vad_filter=self.use_vad,
             vad_parameters=self.vad_parameters if self.use_vad else None)
         if ServeClientFasterWhisper.SINGLE_MODEL:
             ServeClientFasterWhisper.SINGLE_MODEL_LOCK.release()
 
-        if self.language is None and info is not None:
-            self.set_language(info)
-        print("這是呼叫完 self.transcriber.transcribe 得到的資料",result)
-        
+        # Update the dectected language code from whisper
+        if info is not None:
+            self.dectected_language = info.language
+
         return result
 
     def handle_transcription_output(self, result, duration):
@@ -243,12 +245,12 @@ class ServeClientFasterWhisper(ServeClientBase):
 
     def send_transcription_to_client(self, segments):
         """
-        改寫 base.py 的 method，將 whisper 辨識出的語言透過 language 送給 client
+        Modify the method in base.py to send the language detected by Whisper to the client via the language field.
         """
         for s in segments:
-            s["source_language"] = self.language
-        
-        print("準備要送給 client 的資料",segments)
+            s["source_language"] = self.dectected_language
+
+        logging.info(f"For client {segments}")
 
         try:
             self.websocket.send(

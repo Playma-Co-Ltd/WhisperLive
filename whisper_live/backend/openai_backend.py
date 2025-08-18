@@ -64,18 +64,15 @@ class ServeClientOpenAI(ServeClientBase):
     def transcribe_audio(self, audio_chunk: np.ndarray):
         # Process audio directly without buffering to match faster_whisper behavior
         # This ensures consistent timing and better quality
-        print("轉譯參數資料",self.no_speech_thresh,self.same_output_threshold,self.initial_prompt,self.language)
+        
         # ensure mono float32 in [-1, 1]
         x = np.asarray(audio_chunk, dtype=np.float32)
         x = np.clip(x, -1.0, 1.0)
         
-        # 檢測是否為靜音 - 計算音訊能量
+        # Silence dectection
         energy = np.sqrt(np.mean(x**2))
-        silence_threshold = 0.03  # 可調整的靜音閾值
-        
-        # 如果音訊能量低於閾值，判定為靜音，不進行轉譯
+        silence_threshold = 0.03 
         if energy < silence_threshold:
-            print("判斷為靜音")
             return None
 
         # convert to 16-bit PCM
@@ -93,7 +90,9 @@ class ServeClientOpenAI(ServeClientBase):
         buffer.name = "audio.wav"  # important for content-type sniffing
 
         try:
-            # 呼叫 OpenAI Whisper API with context
+            # Don’t pass language parameters when the client selects auto-detection.
+            # Before each transcription, language is set to None to enable auto-detection.
+            # If the user passes a language code, then all transcriptions will use that language code.
             api_params = {
                 "model": self.model,
                 "file": buffer,
@@ -102,11 +101,18 @@ class ServeClientOpenAI(ServeClientBase):
                 "language":self.language,
                 "response_format": "verbose_json", # Get timestamps
             }
+
+            if self.language == "auto":
+                api_params.pop("language", None)
             
-            response = self.client.audio.transcriptions.create(**api_params)
+            result = self.client.audio.transcriptions.create(**api_params)
+
+            # Update the dectected language code from whisper
+            if result.language:
+                self.dectected_language = result.language
             
-            # Return response object for processing
-            return response
+            return result
+
         except Exception as e:
             logging.error(f"OpenAI API transcription error: {e}")
             return None
@@ -120,11 +126,12 @@ class ServeClientOpenAI(ServeClientBase):
                 result (str): The result from whisper inference i.e. the list of segments.
                 duration (float): Duration of the transcribed audio chunk.
         """
+
+        # If the ASR process for a chunk of audio encounters a network error, do not perform any action.
+        # Ignore this transcription.
         if result is None:
             return
-        self.dectected_language = result.language
         result = result.segments
-        
         segments = []
         if len(result):
             self.t_start = None
@@ -137,7 +144,7 @@ class ServeClientOpenAI(ServeClientBase):
 
     def send_transcription_to_client(self, segments):
         """
-        改寫 base.py 的 method，將 whisper 辨識出的語言透過 language 送給 client
+        Modify the method in base.py to send the language detected by Whisper to the client via the language field.
         """
         for s in segments:
             s["source_language"] = self.dectected_language 
@@ -151,6 +158,5 @@ class ServeClientOpenAI(ServeClientBase):
                     "segments": segments
                 })
             )
-            print("發送完成")
         except Exception as e:
             logging.error(f"[ERROR]: Sending data to client: {e}")
