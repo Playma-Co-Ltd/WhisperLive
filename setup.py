@@ -63,9 +63,9 @@ setup(
         "optimum", 
         "optimum-intel",
 
-        # opena ai
+        # OpenAI
         "python-dotenv",
-        "openai "            
+        "openai"            
 
     ],
     python_requires=">=3.9"
