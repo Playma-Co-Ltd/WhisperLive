@@ -4,7 +4,6 @@ import logging
 import threading
 import numpy as np
 import io, wave
-import time
 from openai import OpenAI
 
 from whisper_live.backend.base import ServeClientBase
@@ -73,6 +72,7 @@ class ServeClientOpenAI(ServeClientBase):
         energy = np.sqrt(np.mean(x**2))
         silence_threshold = 0.03 
         if energy < silence_threshold:
+            logging.info("Silent chunk skipped (energy=%f, threshold=%f)", energy, silence_threshold)
             return None
 
         # convert to 16-bit PCM
