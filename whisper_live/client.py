@@ -41,6 +41,7 @@ class Client:
         target_language="fr",
         translation_callback=None,
         translation_srt_file_path="output_translated.srt",
+        initial_prompt=None,
     ):
         """
         Initializes a Client instance for audio recording and streaming to a server.
@@ -95,6 +96,7 @@ class Client:
         self.translation_callback = translation_callback
         self.translation_srt_file_path = translation_srt_file_path
         self.last_translated_segment = None
+        self.initial_prompt = initial_prompt
         if translate:
             self.task = "translate"
 
@@ -271,6 +273,7 @@ class Client:
                     "same_output_threshold": self.same_output_threshold,
                     "enable_translation": self.enable_translation,
                     "target_language": self.target_language,
+                    "initial_prompt": self.initial_prompt,
                 }
             )
         )
@@ -790,6 +793,7 @@ class TranscriptionClient(TranscriptionTeeClient):
         target_language="fr",
         translation_callback=None,
         translation_srt_file_path="./output_translated.srt",
+        initial_prompt=None,
     ):
         self.client = Client(
             host,
@@ -810,6 +814,7 @@ class TranscriptionClient(TranscriptionTeeClient):
             target_language=target_language,
             translation_callback=translation_callback,
             translation_srt_file_path=translation_srt_file_path,
+            initial_prompt=initial_prompt,
         )
 
         if save_output_recording and not output_recording_filename.endswith(".wav"):
