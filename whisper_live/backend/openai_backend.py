@@ -7,6 +7,7 @@ import io, wave
 from openai import OpenAI
 
 from whisper_live.backend.base import ServeClientBase
+from whisper_live.vad import VoiceActivityDetector
 
 from dotenv import load_dotenv
 
@@ -26,6 +27,7 @@ class ServeClientOpenAI(ServeClientBase):
         same_output_threshold=10,
         translation_queue=None,
         initial_prompt=None,
+        vad_threshold=0.5,
     ):
         super().__init__(
             client_uid=client_uid,
@@ -41,14 +43,17 @@ class ServeClientOpenAI(ServeClientBase):
         self.language = language
         self.task = task
         self.initial_prompt = initial_prompt
+        
+        # Initialize Silero VAD
+        self.vad = VoiceActivityDetector(threshold=vad_threshold, frame_rate=int(self.RATE))
+        
+        logging.info(f"OpenAI ASR backend initialized with model: {self.model}, language: {self.language}, VAD threshold: {vad_threshold}")
+        logging.info(f"Config : {self.no_speech_thresh}, {self.same_output_threshold}")
 
-        
-        logging.info(f"OpenAI ASR backend initialized with model: {self.model}, language: {self.language}")
-        
         # Start transcription thread
         self.trans_thread = threading.Thread(target=self.speech_to_text)
         self.trans_thread.start()
-        
+
         # Send SERVER_READY message to client
         self.websocket.send(
             json.dumps(
@@ -59,6 +64,7 @@ class ServeClientOpenAI(ServeClientBase):
                 }
             )
         )
+        
     
     def transcribe_audio(self, audio_chunk: np.ndarray):
         # Process audio directly without buffering to match faster_whisper behavior
@@ -68,11 +74,10 @@ class ServeClientOpenAI(ServeClientBase):
         x = np.asarray(audio_chunk, dtype=np.float32)
         x = np.clip(x, -1.0, 1.0)
         
-        # Silence dectection
-        energy = np.sqrt(np.mean(x**2))
-        silence_threshold = 0.03 
-        if energy < silence_threshold:
-            logging.info("Silent chunk skipped (energy=%f, threshold=%f)", energy, silence_threshold)
+        # Voice Activity Detection using Silero VAD
+        has_speech = self.vad(x)
+        if not has_speech:
+            logging.info("Silent chunk skipped (Silero VAD detected no speech)")
             return None
 
         # convert to 16-bit PCM
