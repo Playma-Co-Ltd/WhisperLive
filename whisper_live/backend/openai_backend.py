@@ -27,7 +27,7 @@ class ServeClientOpenAI(ServeClientBase):
         same_output_threshold=10,
         translation_queue=None,
         initial_prompt=None,
-        vad_threshold=0.5,
+        vad_threshold=0.9,
     ):
         super().__init__(
             client_uid=client_uid,
