@@ -40,10 +40,11 @@ class ServeClientOpenAI(ServeClientBase):
         )
         self.client = OpenAI()
         self.model = "whisper-1"
-        self.language = language
+        self.language = language if language is not None else "auto"
         self.task = task
         self.initial_prompt = initial_prompt
-        
+        self.detected_language = None
+
         # Initialize Silero VAD
         self.vad = VoiceActivityDetector(threshold=vad_threshold, frame_rate=int(self.RATE))
         
