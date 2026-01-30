@@ -62,6 +62,11 @@ setup(
         "openvino-tokenizers",
         "optimum", 
         "optimum-intel",
+
+        # OpenAI
+        "python-dotenv",
+        "openai"            
+
     ],
     python_requires=">=3.9"
 )

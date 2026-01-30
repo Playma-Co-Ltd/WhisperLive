@@ -204,18 +204,26 @@ class ServeClientFasterWhisper(ServeClientBase):
         """
         if ServeClientFasterWhisper.SINGLE_MODEL:
             ServeClientFasterWhisper.SINGLE_MODEL_LOCK.acquire()
+
+        # Don’t pass language parameters when the client selects auto-detection.
+        # Before each transcription, lang_arg is set to None to enable auto-detection.
+        # If the user passes a language code, then all transcriptions will use that language code.
+        lang_arg = None if self.language == "auto" else self.language
+
         result, info = self.transcriber.transcribe(
             input_sample,
             initial_prompt=self.initial_prompt,
-            language=self.language,
+            language=lang_arg,
             task=self.task,
             vad_filter=self.use_vad,
             vad_parameters=self.vad_parameters if self.use_vad else None)
         if ServeClientFasterWhisper.SINGLE_MODEL:
             ServeClientFasterWhisper.SINGLE_MODEL_LOCK.release()
 
-        if self.language is None and info is not None:
-            self.set_language(info)
+        # Update the dectected language code from whisper
+        if info is not None:
+            self.detected_language = info.language
+
         return result
 
     def handle_transcription_output(self, result, duration):
@@ -234,3 +242,22 @@ class ServeClientFasterWhisper(ServeClientBase):
 
         if len(segments):
             self.send_transcription_to_client(segments)
+
+    def send_transcription_to_client(self, segments):
+        """
+        Modify the method in base.py to send the language detected by Whisper to the client via the language field.
+        """
+        for s in segments:
+            s["source_language"] = self.detected_language
+
+        logging.info(f"For client {segments}")
+
+        try:
+            self.websocket.send(
+                json.dumps({
+                    "uid": self.client_uid,
+                    "segments": segments
+                })
+            )
+        except Exception as e:
+            logging.error(f"[ERROR]: Sending data to client: {e}")
